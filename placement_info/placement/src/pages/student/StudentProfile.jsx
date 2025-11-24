@@ -1,70 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import PageHeader from '../../components/PageHeader';
+import { studentsAPI } from '../../services/api';
 import './StudentProfile.css';
 
 const StudentProfile = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [editMode, setEditMode] = useState({});
   const [employabilityIndex, setEmployabilityIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [studentId] = useState(1); // TODO: Get from auth context
 
   const [profileData, setProfileData] = useState({
     personal: {
-      fullName: 'John Doe',
-      email: 'john.doe@university.edu',
-      phone: '+91 98765 43210',
-      rollNumber: 'CS2021-001',
-      department: 'Computer Science',
-      year: '4th Year',
-      cgpa: 8.5,
-      dateOfBirth: '2003-05-15',
-      gender: 'Male',
-      address: '123 University Road, Campus',
+      fullName: '',
+      email: '',
+      phone: '',
+      rollNumber: '',
+      department: '',
+      year: '',
+      cgpa: 0,
+      dateOfBirth: '',
+      gender: '',
+      address: '',
     },
-    skills: [
-      { id: 1, name: 'JavaScript', level: 'Advanced', yearsOfExperience: 2, category: 'Programming' },
-      { id: 2, name: 'React', level: 'Advanced', yearsOfExperience: 1.5, category: 'Framework' },
-      { id: 3, name: 'Node.js', level: 'Intermediate', yearsOfExperience: 1, category: 'Backend' },
-      { id: 4, name: 'SQL', level: 'Intermediate', yearsOfExperience: 1, category: 'Database' },
-      { id: 5, name: 'Python', level: 'Advanced', yearsOfExperience: 2, category: 'Programming' },
-    ],
-    certifications: [
-      { id: 1, name: 'AWS Certified Developer', issuer: 'Amazon', dateObtained: '2024-08', expiryDate: '2027-08', credentialId: 'AWS-123456' },
-      { id: 2, name: 'React Professional', issuer: 'Meta', dateObtained: '2024-06', expiryDate: null, credentialId: 'META-789012' },
-    ],
-    internships: [
-      {
-        id: 1,
-        company: 'Tech Innovators Inc',
-        role: 'Software Development Intern',
-        startDate: '2024-06',
-        endDate: '2024-08',
-        description: 'Developed web applications using React and Node.js',
-        skills: ['React', 'Node.js', 'MongoDB'],
-        current: false,
-      },
-      {
-        id: 2,
-        company: 'Data Analytics Corp',
-        role: 'Data Science Intern',
-        startDate: '2024-01',
-        endDate: '2024-03',
-        description: 'Analyzed datasets and created ML models',
-        skills: ['Python', 'Pandas', 'TensorFlow'],
-        current: false,
-      },
-    ],
-    projects: [
-      {
-        id: 1,
-        title: 'E-Commerce Platform',
-        description: 'Full-stack e-commerce application with payment integration',
-        technologies: ['React', 'Node.js', 'MongoDB', 'Stripe'],
-        link: 'https://github.com/johndoe/ecommerce',
-        startDate: '2024-03',
-        endDate: '2024-05',
-      },
-    ],
+    skills: [],
+    certifications: [],
+    internships: [],
+    projects: [],
   });
 
   const [newSkill, setNewSkill] = useState({ name: '', level: 'Beginner', yearsOfExperience: 0, category: 'Programming' });
@@ -75,8 +38,65 @@ const StudentProfile = () => {
 
   // Calculate Employability Index
   useEffect(() => {
+    fetchProfileData();
+  }, [studentId]);
+
+  useEffect(() => {
     calculateEmployabilityIndex();
   }, [profileData]);
+
+  const fetchProfileData = async () => {
+    try {
+      setLoading(true);
+      const data = await studentsAPI.getById(studentId);
+      console.log('Profile data:', data);
+
+      setProfileData({
+        personal: {
+          fullName: data.full_name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          rollNumber: data.roll_number || '',
+          department: data.department || '',
+          year: data.year || '',
+          cgpa: data.cgpa || 0,
+          dateOfBirth: data.date_of_birth || '',
+          gender: data.gender || '',
+          address: data.address || '',
+        },
+        skills: (data.skills || []).map(skill => ({
+          id: skill.id,
+          name: skill.skill_name,
+          level: skill.proficiency_level,
+          yearsOfExperience: skill.years_experience,
+          category: skill.category
+        })),
+        certifications: (data.certifications || []).map(cert => ({
+          id: cert.id,
+          name: cert.name,
+          issuer: cert.issuer,
+          dateObtained: cert.date_obtained?.substring(0, 7) || '', // Format as YYYY-MM
+          expiryDate: cert.expiry_date?.substring(0, 7) || null,
+          credentialId: cert.credential_id
+        })),
+        internships: (data.internships || []).map(intern => ({
+          id: intern.id,
+          company: intern.company,
+          role: intern.role,
+          startDate: intern.start_date?.substring(0, 7) || '',
+          endDate: intern.end_date?.substring(0, 7) || '',
+          description: intern.description,
+          skills: JSON.parse(intern.skills || '[]'),
+          current: intern.is_current
+        })),
+        projects: [] // Projects not in current schema
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const calculateEmployabilityIndex = () => {
     const cgpaScore = (profileData.personal.cgpa / 10) * 30; // 30% weightage
@@ -102,61 +122,108 @@ const StudentProfile = () => {
     return 'Needs Improvement';
   };
 
-  const addSkill = () => {
+  const addSkill = async () => {
     if (newSkill.name) {
-      setProfileData({
-        ...profileData,
-        skills: [...profileData.skills, { ...newSkill, id: Date.now() }]
-      });
-      setNewSkill({ name: '', level: 'Beginner', yearsOfExperience: 0, category: 'Programming' });
+      try {
+        await studentsAPI.addSkill(studentId, {
+          skill_name: newSkill.name,
+          proficiency_level: newSkill.level,
+          years_experience: newSkill.yearsOfExperience,
+          category: newSkill.category
+        });
+        
+        // Refresh profile data
+        await fetchProfileData();
+        setNewSkill({ name: '', level: 'Beginner', yearsOfExperience: 0, category: 'Programming' });
+      } catch (error) {
+        console.error('Error adding skill:', error);
+        alert('Failed to add skill');
+      }
     }
   };
 
-  const removeSkill = (id) => {
-    setProfileData({
-      ...profileData,
-      skills: profileData.skills.filter(skill => skill.id !== id)
-    });
+  const removeSkill = async (id) => {
+    try {
+      await studentsAPI.deleteSkill(studentId, id);
+      await fetchProfileData();
+    } catch (error) {
+      console.error('Error removing skill:', error);
+      alert('Failed to remove skill');
+    }
   };
 
-  const addCertification = () => {
+  const addCertification = async () => {
     if (newCertification.name && newCertification.issuer) {
-      setProfileData({
-        ...profileData,
-        certifications: [...profileData.certifications, { ...newCertification, id: Date.now() }]
-      });
-      setNewCertification({ name: '', issuer: '', dateObtained: '', credentialId: '' });
+      try {
+        await studentsAPI.addCertification(studentId, {
+          name: newCertification.name,
+          issuer: newCertification.issuer,
+          date_obtained: newCertification.dateObtained,
+          credential_id: newCertification.credentialId
+        });
+        
+        await fetchProfileData();
+        setNewCertification({ name: '', issuer: '', dateObtained: '', credentialId: '' });
+      } catch (error) {
+        console.error('Error adding certification:', error);
+        alert('Failed to add certification');
+      }
     }
   };
 
-  const removeCertification = (id) => {
-    setProfileData({
-      ...profileData,
-      certifications: profileData.certifications.filter(cert => cert.id !== id)
-    });
+  const removeCertification = async (id) => {
+    try {
+      // Note: Delete certification endpoint not implemented in backend yet
+      console.log('Delete certification:', id);
+      alert('Delete certification feature coming soon');
+    } catch (error) {
+      console.error('Error removing certification:', error);
+    }
   };
 
-  const addInternship = () => {
+  const addInternship = async () => {
     if (newInternship.company && newInternship.role) {
-      const skillsArray = newInternship.skills.split(',').map(s => s.trim()).filter(s => s);
-      setProfileData({
-        ...profileData,
-        internships: [...profileData.internships, { 
-          ...newInternship, 
-          skills: skillsArray,
-          id: Date.now() 
-        }]
-      });
-      setNewInternship({ company: '', role: '', startDate: '', endDate: '', description: '', skills: '', current: false });
+      try {
+        const skillsArray = newInternship.skills.split(',').map(s => s.trim()).filter(s => s);
+        await studentsAPI.addInternship(studentId, {
+          company: newInternship.company,
+          role: newInternship.role,
+          start_date: newInternship.startDate,
+          end_date: newInternship.current ? null : newInternship.endDate,
+          description: newInternship.description,
+          skills: JSON.stringify(skillsArray),
+          is_current: newInternship.current
+        });
+        
+        await fetchProfileData();
+        setNewInternship({ company: '', role: '', startDate: '', endDate: '', description: '', skills: '', current: false });
+      } catch (error) {
+        console.error('Error adding internship:', error);
+        alert('Failed to add internship');
+      }
     }
   };
 
-  const removeInternship = (id) => {
-    setProfileData({
-      ...profileData,
-      internships: profileData.internships.filter(internship => internship.id !== id)
-    });
+  const removeInternship = async (id) => {
+    try {
+      // Note: Delete internship endpoint not implemented in backend yet
+      console.log('Delete internship:', id);
+      alert('Delete internship feature coming soon');
+    } catch (error) {
+      console.error('Error removing internship:', error);
+    }
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="student-profile">
+          <PageHeader title="My Profile" subtitle="Loading profile data..." />
+          <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import PageHeader from '../../components/PageHeader';
+import { analyticsAPI } from '../../services/api';
 import './Analytics.css';
 
 const Analytics = () => {
-  // Mock analytics data
-  const analyticsData = {
+  const [loading, setLoading] = useState(true);
+  const [analyticsData, setAnalyticsData] = useState({
     overview: {
       totalStudents: 450,
       placed: 287,
@@ -98,9 +99,117 @@ const Analytics = () => {
         students: 100,
       },
     ],
-  };
+  });
 
   const [activeTab, setActiveTab] = useState('overview');
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, []);
+
+  const fetchAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all analytics data in parallel
+      const [stats, departments, skills, companies, applicationStatus] = await Promise.all([
+        analyticsAPI.getStats(),
+        analyticsAPI.getDepartments(),
+        analyticsAPI.getSkills(),
+        analyticsAPI.getCompanies(),
+        analyticsAPI.getApplicationStatus()
+      ]);
+
+      console.log('Analytics Data:', { stats, departments, skills, companies, applicationStatus });
+
+      // Transform the data to match the component's expected structure
+      const transformedData = {
+        overview: {
+          totalStudents: stats.totalStudents || 0,
+          placed: stats.placedStudents || 0,
+          inProcess: stats.totalApplications - (stats.placedStudents || 0),
+          notPlaced: stats.totalStudents - (stats.placedStudents || 0),
+          placementRate: stats.totalStudents > 0 ? ((stats.placedStudents / stats.totalStudents) * 100).toFixed(1) : 0,
+          averagePackage: stats.averagePackage || 0,
+          highestPackage: stats.highestPackage || 0,
+        },
+        departmentStats: departments.map(dept => ({
+          department: dept.department,
+          total: dept.total_students,
+          placed: dept.placed_students,
+          rate: dept.placement_rate,
+          avgPackage: dept.average_package || 0
+        })),
+        topSkills: skills.map(skill => ({
+          skill: skill.skill_name,
+          demandCount: skill.job_demand || 0,
+          students: skill.student_count || 0,
+          gap: (skill.student_count || 0) - (skill.job_demand || 0)
+        })),
+        packageDistribution: [
+          { range: '0-5 LPA', count: 0 },
+          { range: '5-10 LPA', count: 0 },
+          { range: '10-15 LPA', count: 0 },
+          { range: '15-20 LPA', count: 0 },
+          { range: '20+ LPA', count: 0 },
+        ],
+        topCompanies: companies.slice(0, 5).map((company, index) => ({
+          name: company.company_name,
+          hires: company.total_hires || 0,
+          avgPackage: company.average_package || 0
+        })),
+        skillGapInsights: skills.slice(0, 4).map(skill => {
+          const gap = (skill.student_count || 0) - (skill.job_demand || 0);
+          return {
+            skill: skill.skill_name,
+            demand: skill.job_demand || 0,
+            supply: skill.student_count || 0,
+            status: gap > 0 ? 'surplus' : 'shortage',
+            message: gap > 0 
+              ? `Good coverage! Students have strong ${skill.skill_name} skills.`
+              : `High demand! Consider ${skill.skill_name} training.`
+          };
+        }),
+        trainingRecommendations: [
+          {
+            category: 'High Priority',
+            skills: skills.filter(s => (s.student_count || 0) < (s.job_demand || 0)).slice(0, 3).map(s => s.skill_name),
+            reason: 'High market demand with skill gap',
+            students: 150,
+          },
+          {
+            category: 'Medium Priority',
+            skills: skills.slice(3, 6).map(s => s.skill_name),
+            reason: 'Growing demand in placement drives',
+            students: 200,
+          },
+          {
+            category: 'Emerging Technologies',
+            skills: ['Machine Learning', 'DevOps', 'Blockchain'],
+            reason: 'Future-ready skills for premium roles',
+            students: 100,
+          },
+        ],
+      };
+
+      setAnalyticsData(transformedData);
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="analytics-page">
+          <PageHeader title="Placement Analytics" subtitle="Loading analytics data..." />
+          <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

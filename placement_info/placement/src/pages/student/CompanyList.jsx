@@ -1,15 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import PageHeader from '../../components/PageHeader';
+import { companiesAPI } from '../../services/api';
 import './CompanyList.css';
 
 const CompanyList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSector, setFilterSector] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const companies = [
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setLoading(true);
+        const result = await companiesAPI.getAll();
+        if (result.success) {
+          setCompanies(result.data);
+        }
+      } catch (error) {
+        console.error('Error fetching companies:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompanies();
+  }, []);
+
+  const mockCompanies = [
     {
       id: 1,
       name: 'Tech Corp',
@@ -87,27 +108,28 @@ const CompanyList = () => {
   const sectors = ['all', 'Technology', 'Software', 'Analytics', 'Cloud Computing', 'Artificial Intelligence', 'Fintech'];
   const statuses = ['all', 'hiring', 'upcoming', 'closed'];
 
-  const filteredCompanies = companies.filter(company => {
+  const filteredCompanies = loading ? [] : companies.filter(company => {
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         company.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSector = filterSector === 'all' || company.sector === filterSector;
-    const matchesStatus = filterStatus === 'all' || company.status === filterStatus;
+                         (company.description && company.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSector = filterSector === 'all' || company.industry === filterSector;
+    const matchesStatus = filterStatus === 'all' || (filterStatus === 'hiring' && company.job_count > 0) || (filterStatus === 'closed' && company.job_count === 0);
     return matchesSearch && matchesSector && matchesStatus;
   });
 
-  const getStatusBadge = (status) => {
-    const styles = {
-      hiring: { bg: '#dcfce7', color: '#166534', text: 'Hiring' },
-      upcoming: { bg: '#dbeafe', color: '#1e40af', text: 'Upcoming' },
-      closed: { bg: '#fee2e2', color: '#991b1b', text: 'Closed' },
-    };
-    const style = styles[status];
-    return (
-      <span className="status-badge" style={{ backgroundColor: style.bg, color: style.color }}>
-        {style.text}
-      </span>
-    );
+  const getStatusBadge = (jobCount) => {
+    if (jobCount > 0) {
+      return <span className="status-badge" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>Hiring</span>;
+    }
+    return <span className="status-badge" style={{ backgroundColor: '#fee2e2', color: '#991b1b' }}>No Openings</span>;
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="loading-state">Loading companies...</div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -165,36 +187,32 @@ const CompanyList = () => {
               <Link key={company.id} to={`/student/companies/${company.id}`} className="company-card">
                 <div className="company-header">
                   <div className="company-logo">{company.logo}</div>
-                  {getStatusBadge(company.status)}
+                  {getStatusBadge(company.job_count)}
                 </div>
 
                 <h3 className="company-name">{company.name}</h3>
-                <p className="company-sector">{company.sector}</p>
-                <p className="company-description">{company.description}</p>
+                <p className="company-sector">{company.industry || 'Technology'}</p>
+                <p className="company-description">{company.description || 'No description available'}</p>
 
                 <div className="company-info">
                   <div className="info-item">
                     <span className="info-icon">📍</span>
-                    <span>{company.locations.join(', ')}</span>
+                    <span>{company.location || 'Multiple locations'}</span>
                   </div>
                   <div className="info-item">
-                    <span className="info-icon">💰</span>
-                    <span>{company.package}</span>
+                    <span className="info-icon">📞</span>
+                    <span>{company.contact_email || 'N/A'}</span>
                   </div>
                   <div className="info-item">
-                    <span className="info-icon">📅</span>
-                    <span>Visit: {new Date(company.visitDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}</span>
+                    <span className="info-icon">🌐</span>
+                    <span>{company.website || 'N/A'}</span>
                   </div>
                 </div>
 
                 <div className="company-footer">
                   <span className="openings-count">
-                    {company.activeOpenings > 0 
-                      ? `${company.activeOpenings} Active ${company.activeOpenings === 1 ? 'Opening' : 'Openings'}`
+                    {company.job_count > 0 
+                      ? `${company.job_count} Active ${company.job_count === 1 ? 'Opening' : 'Openings'}`
                       : 'No Active Openings'}
                   </span>
                   <span className="view-details-arrow">→</span>

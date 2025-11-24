@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import DashboardCard from '../../components/DashboardCard';
 import PageHeader from '../../components/PageHeader';
+import { analyticsAPI, applicationsAPI } from '../../services/api';
 import './StudentDashboard.css';
 
 const StudentDashboard = () => {
@@ -16,10 +17,10 @@ const StudentDashboard = () => {
     cgpa: '8.5',
   });
 
-  const stats = [
+  const [stats, setStats] = useState([
     {
       title: 'Applications Sent',
-      value: '12',
+      value: '0',
       icon: '📝',
       subtitle: 'Total applications',
       trend: { type: 'up', value: '+3 this week' },
@@ -28,7 +29,7 @@ const StudentDashboard = () => {
     },
     {
       title: 'Interviews Scheduled',
-      value: '5',
+      value: '0',
       icon: '📅',
       subtitle: 'Upcoming interviews',
       trend: { type: 'up', value: '+2 new' },
@@ -36,96 +37,96 @@ const StudentDashboard = () => {
     },
     {
       title: 'Offers Received',
-      value: '2',
+      value: '0',
       icon: '🎉',
       subtitle: 'Job offers',
       bgColor: '#dcfce7',
     },
     {
-      title: 'Profile Completion',
-      value: '85%',
-      icon: '✓',
-      subtitle: '15% remaining',
-      trend: { type: 'up', value: '+10%' },
+      title: 'Active Jobs',
+      value: '0',
+      icon: '💼',
+      subtitle: 'Available positions',
       bgColor: '#fef3c7',
-      onClick: () => navigate('/student/profile')
+      onClick: () => navigate('/student/jobs')
     },
-  ];
+  ]);
 
-  const upcomingInterviews = [
-    {
-      id: 1,
-      company: 'Tech Corp',
-      position: 'Software Engineer',
-      date: '2025-11-28',
-      time: '10:00 AM',
-      mode: 'Virtual',
-      status: 'confirmed'
-    },
-    {
-      id: 2,
-      company: 'Innovation Labs',
-      position: 'Full Stack Developer',
-      date: '2025-11-30',
-      time: '2:00 PM',
-      mode: 'On-site',
-      status: 'pending'
-    },
-    {
-      id: 3,
-      company: 'Cloud Systems Inc',
-      position: 'Backend Developer',
-      date: '2025-12-02',
-      time: '11:30 AM',
-      mode: 'Virtual',
-      status: 'confirmed'
-    },
-  ];
+  const [loading, setLoading] = useState(true);
 
-  const recentApplications = [
-    {
-      id: 1,
-      company: 'Data Analytics Co',
-      position: 'Data Scientist',
-      appliedDate: '2025-11-20',
-      status: 'under-review'
-    },
-    {
-      id: 2,
-      company: 'AI Solutions',
-      position: 'ML Engineer',
-      appliedDate: '2025-11-18',
-      status: 'shortlisted'
-    },
-    {
-      id: 3,
-      company: 'Web Technologies',
-      position: 'Frontend Developer',
-      appliedDate: '2025-11-15',
-      status: 'rejected'
-    },
-  ];
+  const [recentApplications, setRecentApplications] = useState([]);
+  const [upcomingInterviews, setUpcomingInterviews] = useState([]);
 
-  const recommendedJobs = [
-    {
-      id: 1,
-      company: 'Future Tech',
-      position: 'Software Development Engineer',
-      location: 'Bangalore',
-      type: 'Full-time',
-      package: '12-15 LPA',
-      deadline: '2025-12-05'
-    },
-    {
-      id: 2,
-      company: 'Global Solutions',
-      position: 'Product Engineer',
-      location: 'Pune',
-      type: 'Full-time',
-      package: '10-12 LPA',
-      deadline: '2025-12-10'
-    },
-  ];
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        console.log('Fetching dashboard data...');
+        
+        // Fetch analytics stats
+        const analyticsData = await analyticsAPI.getStats();
+        console.log('Analytics data:', analyticsData);
+        if (analyticsData.success) {
+          const data = analyticsData.data;
+          console.log('Stats data:', data);
+          setStats([
+            {
+              title: 'Total Students',
+              value: data.totalStudents.toString(),
+              icon: '👥',
+              subtitle: 'Registered students',
+              bgColor: '#e0f2fe',
+            },
+            {
+              title: 'Applications',
+              value: data.totalApplications.toString(),
+              icon: '📝',
+              subtitle: 'Total applications',
+              bgColor: '#dbeafe',
+              onClick: () => navigate('/student/applications')
+            },
+            {
+              title: 'Placed Students',
+              value: data.placedStudents.toString(),
+              icon: '🎉',
+              subtitle: `${data.placementRate}% placement rate`,
+              bgColor: '#dcfce7',
+            },
+            {
+              title: 'Active Jobs',
+              value: data.activeJobs.toString(),
+              icon: '💼',
+              subtitle: 'Available positions',
+              bgColor: '#fef3c7',
+              onClick: () => navigate('/student/jobs')
+            },
+          ]);
+        }
+
+        // Fetch recent applications (student_id = 1 for demo)
+        const applicationsData = await applicationsAPI.getAll({ student_id: 1 });
+        console.log('Applications data:', applicationsData);
+        if (applicationsData.success) {
+          setRecentApplications(applicationsData.data.slice(0, 5));
+          console.log('Recent applications:', applicationsData.data.slice(0, 5));
+          
+          // Filter interview-scheduled applications
+          const interviews = applicationsData.data
+            .filter(app => app.status === 'interview-scheduled')
+            .slice(0, 3);
+          setUpcomingInterviews(interviews);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        alert('Failed to load dashboard data. Check console for details.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [navigate]);
 
   const getStatusBadge = (status) => {
     const statusStyles = {
@@ -147,6 +148,14 @@ const StudentDashboard = () => {
       </span>
     );
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="loading-state">Loading dashboard...</div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -198,27 +207,23 @@ const StudentDashboard = () => {
                 <div key={interview.id} className="interview-card">
                   <div className="interview-header">
                     <div>
-                      <h3 className="interview-company">{interview.company}</h3>
-                      <p className="interview-position">{interview.position}</p>
+                      <h3 className="interview-company">{interview.company_name}</h3>
+                      <p className="interview-position">{interview.job_title}</p>
                     </div>
                     {getStatusBadge(interview.status)}
                   </div>
                   <div className="interview-details">
                     <div className="detail-item">
                       <span className="detail-icon">📅</span>
-                      <span>{new Date(interview.date).toLocaleDateString('en-US', { 
+                      <span>{new Date(interview.updated_at).toLocaleDateString('en-US', { 
                         month: 'short', 
                         day: 'numeric', 
                         year: 'numeric' 
                       })}</span>
                     </div>
                     <div className="detail-item">
-                      <span className="detail-icon">🕐</span>
-                      <span>{interview.time}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-icon">📍</span>
-                      <span>{interview.mode}</span>
+                      <span className="detail-icon">📧</span>
+                      <span>{interview.student_email}</span>
                     </div>
                   </div>
                 </div>
@@ -251,64 +256,30 @@ const StudentDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {recentApplications.map((app) => (
-                  <tr key={app.id}>
-                    <td className="company-cell">{app.company}</td>
-                    <td>{app.position}</td>
-                    <td>{new Date(app.appliedDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}</td>
-                    <td>{getStatusBadge(app.status)}</td>
+                {recentApplications.length > 0 ? (
+                  recentApplications.map((app) => (
+                    <tr key={app.id}>
+                      <td className="company-cell">{app.company_name}</td>
+                      <td>{app.job_title}</td>
+                      <td>{new Date(app.applied_date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}</td>
+                      <td>{getStatusBadge(app.status)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4" style={{textAlign: 'center'}}>No applications yet</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Recommended Jobs */}
-        <div className="dashboard-section">
-          <div className="section-header">
-            <h2 className="section-title">Recommended Jobs</h2>
-            <Link to="/student/jobs" className="view-all-link">
-              View All →
-            </Link>
-          </div>
-          
-          <div className="jobs-grid">
-            {recommendedJobs.map((job) => (
-              <div key={job.id} className="job-card">
-                <div className="job-header">
-                  <h3 className="job-company">{job.company}</h3>
-                  <span className="job-type">{job.type}</span>
-                </div>
-                <h4 className="job-position">{job.position}</h4>
-                <div className="job-details">
-                  <div className="job-detail">
-                    <span className="detail-icon">📍</span>
-                    <span>{job.location}</span>
-                  </div>
-                  <div className="job-detail">
-                    <span className="detail-icon">💰</span>
-                    <span>{job.package}</span>
-                  </div>
-                  <div className="job-detail">
-                    <span className="detail-icon">⏰</span>
-                    <span>Apply by {new Date(job.deadline).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric'
-                    })}</span>
-                  </div>
-                </div>
-                <button className="btn-secondary btn-full-width">
-                  Apply Now
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+
       </div>
     </div>
     </Layout>

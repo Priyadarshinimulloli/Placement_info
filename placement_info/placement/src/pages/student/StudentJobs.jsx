@@ -1,16 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import PageHeader from '../../components/PageHeader';
+import { jobsAPI, applicationsAPI } from '../../services/api';
 import './StudentJobs.css';
 
 const StudentJobs = () => {
   const [selectedJob, setSelectedJob] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [jobs, setJobs] = useState([]);
+  const [appliedJobs, setAppliedJobs] = useState(new Set());
   
   // Mock student skills - in real app, fetch from profile
   const studentSkills = ['JavaScript', 'React', 'Node.js', 'SQL', 'Python'];
-  
-  const [jobs, setJobs] = useState([
+
+  // Fetch jobs from API
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch all jobs
+        const jobsData = await jobsAPI.getAll({ status: 'active' });
+        if (jobsData.success) {
+          const formattedJobs = jobsData.data.map(job => ({
+            id: job.id,
+            company: job.company_name,
+            logo: '🏢',
+            title: job.title,
+            location: job.location,
+            type: job.job_type,
+            package: job.package_min && job.package_max 
+              ? `${job.package_min}-${job.package_max} LPA` 
+              : 'Not specified',
+            posted: new Date(job.created_at).toLocaleDateString(),
+            deadline: job.deadline,
+            description: job.description,
+            requiredSkills: job.required_skills ? JSON.parse(job.required_skills) : [],
+            preferredSkills: job.preferred_skills ? JSON.parse(job.preferred_skills) : [],
+            eligibility: job.eligibility_criteria ? JSON.parse(job.eligibility_criteria) : {},
+            applicationCount: job.application_count || 0,
+          }));
+          setJobs(formattedJobs);
+        }
+
+        // Fetch student's applications (student_id = 1 for demo)
+        const applicationsData = await applicationsAPI.getAll({ student_id: 1 });
+        if (applicationsData.success) {
+          const applied = new Set(applicationsData.data.map(app => app.job_id));
+          setAppliedJobs(applied);
+        }
+      } catch (error) {
+        console.error('Error fetching jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, []);
+
+  const mockJobs = [
     {
       id: 1,
       company: 'Tech Corp',
@@ -119,11 +169,12 @@ const StudentJobs = () => {
       ],
       applied: false,
     },
-  ]);
+  ];
 
   // Calculate skill match percentage
   const calculateSkillMatch = (job) => {
-    const allRequiredSkills = [...job.requiredSkills];
+    const allRequiredSkills = job.requiredSkills || [];
+    if (allRequiredSkills.length === 0) return 50;
     const matchedSkills = allRequiredSkills.filter(skill => 
       studentSkills.some(s => s.toLowerCase() === skill.toLowerCase())
     );
@@ -145,9 +196,9 @@ const StudentJobs = () => {
   };
 
   // Filter jobs
-  const filteredJobs = jobs.filter(job => {
+  const filteredJobs = loading ? [] : jobs.filter(job => {
     if (filter === 'all') return true;
-    if (filter === 'applied') return job.applied;
+    if (filter === 'applied') return appliedJobs.has(job.id);
     if (filter === 'recommended') {
       const matchPercentage = calculateSkillMatch(job);
       return matchPercentage >= 60;
@@ -160,11 +211,22 @@ const StudentJobs = () => {
     return calculateSkillMatch(b) - calculateSkillMatch(a);
   });
 
-  const handleApply = (jobId) => {
-    setJobs(jobs.map(job => 
-      job.id === jobId ? { ...job, applied: true } : job
-    ));
-    alert('Application submitted successfully!');
+  const handleApply = async (jobId) => {
+    try {
+      const applicationData = {
+        student_id: 1, // Demo student ID
+        job_id: jobId,
+        cover_letter: 'I am very interested in this position.'
+      };
+      
+      const result = await applicationsAPI.create(applicationData);
+      if (result.success) {
+        setAppliedJobs(new Set([...appliedJobs, jobId]));
+        alert('Application submitted successfully!');
+      }
+    } catch (error) {
+      alert(error.message || 'Failed to submit application');
+    }
   };
 
   const getMatchColor = (percentage) => {
@@ -180,6 +242,14 @@ const StudentJobs = () => {
     if (percentage >= 40) return 'Fair Match';
     return 'Low Match';
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="loading-state">Loading jobs...</div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -249,8 +319,8 @@ const StudentJobs = () => {
                           <p className="company-name">{job.company}</p>
                         </div>
                       </div>
-                      {job.applied && (
-                        <span className="applied-badge">Applied</span>
+                      {appliedJobs.has(job.id) && (
+                        <span className="applied-badge">Applied ✓</span>
                       )}
                     </div>
 
@@ -327,11 +397,11 @@ const StudentJobs = () => {
                   </div>
                 </div>
                 <button 
-                  className={`btn-apply ${selectedJob.applied ? 'applied' : ''}`}
-                  onClick={() => !selectedJob.applied && handleApply(selectedJob.id)}
-                  disabled={selectedJob.applied}
+                  className={`btn-apply ${appliedJobs.has(selectedJob.id) ? 'applied' : ''}`}
+                  onClick={() => !appliedJobs.has(selectedJob.id) && handleApply(selectedJob.id)}
+                  disabled={appliedJobs.has(selectedJob.id)}
                 >
-                  {selectedJob.applied ? 'Applied ✓' : 'Apply Now'}
+                  {appliedJobs.has(selectedJob.id) ? 'Applied ✓' : 'Apply Now'}
                 </button>
               </div>
 
