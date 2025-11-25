@@ -31,7 +31,7 @@ const StudentProfile = () => {
   });
 
   const [newSkill, setNewSkill] = useState({ name: '', level: 'Beginner', yearsOfExperience: 0, category: 'Programming' });
-  const [newCertification, setNewCertification] = useState({ name: '', issuer: '', dateObtained: '', credentialId: '' });
+  const [newCertification, setNewCertification] = useState({ name: '', issuer: '', dateObtained: '', expiryDate: '', credentialId: '' });
   const [newInternship, setNewInternship] = useState({
     company: '', role: '', startDate: '', endDate: '', description: '', skills: '', current: false
   });
@@ -48,8 +48,12 @@ const StudentProfile = () => {
   const fetchProfileData = async () => {
     try {
       setLoading(true);
-      const data = await studentsAPI.getById(studentId);
-      console.log('Profile data:', data);
+      const response = await studentsAPI.getById(studentId);
+      console.log('Full API response:', response);
+      
+      // Extract data from response (backend returns {success: true, data: {...}})
+      const data = response.data || response;
+      console.log('Student data:', data);
 
       setProfileData({
         personal: {
@@ -86,13 +90,14 @@ const StudentProfile = () => {
           startDate: intern.start_date?.substring(0, 7) || '',
           endDate: intern.end_date?.substring(0, 7) || '',
           description: intern.description,
-          skills: JSON.parse(intern.skills || '[]'),
+          skills: typeof intern.skills === 'string' ? JSON.parse(intern.skills || '[]') : (intern.skills || []),
           current: intern.is_current
         })),
         projects: [] // Projects not in current schema
       });
     } catch (error) {
       console.error('Error fetching profile:', error);
+      alert('Failed to load profile data. Check console for details.');
     } finally {
       setLoading(false);
     }
@@ -123,22 +128,28 @@ const StudentProfile = () => {
   };
 
   const addSkill = async () => {
-    if (newSkill.name) {
-      try {
-        await studentsAPI.addSkill(studentId, {
-          skill_name: newSkill.name,
-          proficiency_level: newSkill.level,
-          years_experience: newSkill.yearsOfExperience,
-          category: newSkill.category
-        });
-        
-        // Refresh profile data
-        await fetchProfileData();
-        setNewSkill({ name: '', level: 'Beginner', yearsOfExperience: 0, category: 'Programming' });
-      } catch (error) {
-        console.error('Error adding skill:', error);
-        alert('Failed to add skill');
-      }
+    if (!newSkill.name || !newSkill.name.trim()) {
+      alert('Please enter a skill name');
+      return;
+    }
+    
+    try {
+      console.log('Adding skill:', newSkill);
+      const response = await studentsAPI.addSkill(studentId, {
+        skill_name: newSkill.name,
+        proficiency_level: newSkill.level,
+        years_experience: parseFloat(newSkill.yearsOfExperience) || 0,
+        category: newSkill.category
+      });
+      console.log('Skill added response:', response);
+      
+      // Refresh profile data
+      await fetchProfileData();
+      setNewSkill({ name: '', level: 'Beginner', yearsOfExperience: 0, category: 'Programming' });
+      alert('Skill added successfully!');
+    } catch (error) {
+      console.error('Error adding skill:', error);
+      alert('Failed to add skill: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -153,64 +164,97 @@ const StudentProfile = () => {
   };
 
   const addCertification = async () => {
-    if (newCertification.name && newCertification.issuer) {
-      try {
-        await studentsAPI.addCertification(studentId, {
-          name: newCertification.name,
-          issuer: newCertification.issuer,
-          date_obtained: newCertification.dateObtained,
-          credential_id: newCertification.credentialId
-        });
-        
-        await fetchProfileData();
-        setNewCertification({ name: '', issuer: '', dateObtained: '', credentialId: '' });
-      } catch (error) {
-        console.error('Error adding certification:', error);
-        alert('Failed to add certification');
-      }
+    if (!newCertification.name || !newCertification.name.trim()) {
+      alert('Please enter certification name');
+      return;
+    }
+    if (!newCertification.issuer || !newCertification.issuer.trim()) {
+      alert('Please enter issuing organization');
+      return;
+    }
+    if (!newCertification.dateObtained) {
+      alert('Please select date obtained');
+      return;
+    }
+    
+    try {
+      console.log('Adding certification:', newCertification);
+      const response = await studentsAPI.addCertification(studentId, {
+        name: newCertification.name,
+        issuer: newCertification.issuer,
+        date_obtained: newCertification.dateObtained + '-01', // Add day to make it a valid date
+        expiry_date: newCertification.expiryDate ? newCertification.expiryDate + '-01' : null,
+        credential_id: newCertification.credentialId || null
+      });
+      console.log('Certification added response:', response);
+      
+      await fetchProfileData();
+      setNewCertification({ name: '', issuer: '', dateObtained: '', expiryDate: '', credentialId: '' });
+      alert('Certification added successfully!');
+    } catch (error) {
+      console.error('Error adding certification:', error);
+      alert('Failed to add certification: ' + (error.message || 'Unknown error'));
     }
   };
 
   const removeCertification = async (id) => {
     try {
-      // Note: Delete certification endpoint not implemented in backend yet
-      console.log('Delete certification:', id);
-      alert('Delete certification feature coming soon');
+      await studentsAPI.deleteCertification(studentId, id);
+      await fetchProfileData();
     } catch (error) {
       console.error('Error removing certification:', error);
+      alert('Failed to remove certification');
     }
   };
 
   const addInternship = async () => {
-    if (newInternship.company && newInternship.role) {
-      try {
-        const skillsArray = newInternship.skills.split(',').map(s => s.trim()).filter(s => s);
-        await studentsAPI.addInternship(studentId, {
-          company: newInternship.company,
-          role: newInternship.role,
-          start_date: newInternship.startDate,
-          end_date: newInternship.current ? null : newInternship.endDate,
-          description: newInternship.description,
-          skills: JSON.stringify(skillsArray),
-          is_current: newInternship.current
-        });
-        
-        await fetchProfileData();
-        setNewInternship({ company: '', role: '', startDate: '', endDate: '', description: '', skills: '', current: false });
-      } catch (error) {
-        console.error('Error adding internship:', error);
-        alert('Failed to add internship');
-      }
+    if (!newInternship.company || !newInternship.company.trim()) {
+      alert('Please enter company name');
+      return;
+    }
+    if (!newInternship.role || !newInternship.role.trim()) {
+      alert('Please enter role/position');
+      return;
+    }
+    if (!newInternship.startDate) {
+      alert('Please select start date');
+      return;
+    }
+    if (!newInternship.current && !newInternship.endDate) {
+      alert('Please select end date or mark as current');
+      return;
+    }
+    
+    try {
+      console.log('Adding internship:', newInternship);
+      const skillsArray = newInternship.skills.split(',').map(s => s.trim()).filter(s => s);
+      const response = await studentsAPI.addInternship(studentId, {
+        company: newInternship.company,
+        role: newInternship.role,
+        start_date: newInternship.startDate + '-01', // Add day to make it a valid date
+        end_date: newInternship.current ? null : (newInternship.endDate + '-01'),
+        description: newInternship.description || '',
+        skills: skillsArray,
+        is_current: newInternship.current
+      });
+      console.log('Internship added response:', response);
+      
+      await fetchProfileData();
+      setNewInternship({ company: '', role: '', startDate: '', endDate: '', description: '', skills: '', current: false });
+      alert('Internship added successfully!');
+    } catch (error) {
+      console.error('Error adding internship:', error);
+      alert('Failed to add internship: ' + (error.message || 'Unknown error'));
     }
   };
 
   const removeInternship = async (id) => {
     try {
-      // Note: Delete internship endpoint not implemented in backend yet
-      console.log('Delete internship:', id);
-      alert('Delete internship feature coming soon');
+      await studentsAPI.deleteInternship(studentId, id);
+      await fetchProfileData();
     } catch (error) {
       console.error('Error removing internship:', error);
+      alert('Failed to remove internship');
     }
   };
 
@@ -469,6 +513,12 @@ const StudentProfile = () => {
                     placeholder="Date obtained"
                     value={newCertification.dateObtained}
                     onChange={(e) => setNewCertification({ ...newCertification, dateObtained: e.target.value })}
+                  />
+                  <input
+                    type="month"
+                    placeholder="Expiry date (optional)"
+                    value={newCertification.expiryDate}
+                    onChange={(e) => setNewCertification({ ...newCertification, expiryDate: e.target.value })}
                   />
                   <input
                     type="text"

@@ -13,13 +13,20 @@ const StudentApplications = () => {
     const fetchApplications = async () => {
       try {
         setLoading(true);
+        console.log('Fetching applications...');
         // Fetch applications for student_id = 1 (demo)
         const result = await applicationsAPI.getAll({ student_id: 1 });
-        if (result.success) {
+        console.log('Applications API response:', result);
+        
+        if (result.success && result.data) {
           setApplications(result.data);
+          console.log('Applications loaded:', result.data);
+        } else {
+          console.error('Invalid applications response:', result);
         }
       } catch (error) {
         console.error('Error fetching applications:', error);
+        alert('Failed to load applications. Check console for details.');
       } finally {
         setLoading(false);
       }
@@ -88,31 +95,56 @@ const StudentApplications = () => {
           </button>
         </div>
 
-        {/* Applications Table */}
+        {/* Applications Cards Grid */}
         {filteredApplications.length > 0 ? (
-          <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                <tr>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Company</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Position</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Applied Date</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Status</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>CGPA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredApplications.map((app) => (
-                  <tr key={app.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '12px' }}>{app.company_name}</td>
-                    <td style={{ padding: '12px' }}>{app.job_title}</td>
-                    <td style={{ padding: '12px' }}>{new Date(app.applied_date).toLocaleDateString()}</td>
-                    <td style={{ padding: '12px' }}>{getStatusBadge(app.status)}</td>
-                    <td style={{ padding: '12px' }}>{app.cgpa}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="applications-grid">
+            {filteredApplications.map((app) => (
+              <div key={app.id} className="application-card">
+                <div className="application-card-header">
+                  <div className="company-logo">🏢</div>
+                  <div className="company-info">
+                    <h3 className="company-name">{app.company_name}</h3>
+                    <p className="job-title">{app.job_title}</p>
+                  </div>
+                </div>
+                
+                <div className="application-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Applied Date:</span>
+                    <span className="detail-value">{new Date(app.applied_date).toLocaleDateString()}</span>
+                  </div>
+                  
+                  <div className="detail-item">
+                    <span className="detail-label">Status:</span>
+                    <span className="detail-value">{getStatusBadge(app.status)}</span>
+                  </div>
+                  
+                  {app.job_location && (
+                    <div className="detail-item">
+                      <span className="detail-label">Location:</span>
+                      <span className="detail-value">{app.job_location}</span>
+                    </div>
+                  )}
+                  
+                  {app.package_min && app.package_max && (
+                    <div className="detail-item">
+                      <span className="detail-label">Package:</span>
+                      <span className="detail-value">{app.package_min}-{app.package_max} LPA</span>
+                    </div>
+                  )}
+                </div>
+                
+                {app.cover_letter && (
+                  <div className="cover-letter-preview">
+                    <p className="cover-letter-text">{app.cover_letter.substring(0, 100)}...</p>
+                  </div>
+                )}
+                
+                <div className="application-card-footer">
+                  <button className="btn-view-details">View Details</button>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="placeholder-card">

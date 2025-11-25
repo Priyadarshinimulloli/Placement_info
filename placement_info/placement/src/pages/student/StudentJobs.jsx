@@ -20,38 +20,56 @@ const StudentJobs = () => {
       try {
         setLoading(true);
         
-        // Fetch all jobs
-        const jobsData = await jobsAPI.getAll({ status: 'active' });
-        if (jobsData.success) {
-          const formattedJobs = jobsData.data.map(job => ({
-            id: job.id,
-            company: job.company_name,
-            logo: '🏢',
-            title: job.title,
-            location: job.location,
-            type: job.job_type,
-            package: job.package_min && job.package_max 
-              ? `${job.package_min}-${job.package_max} LPA` 
-              : 'Not specified',
-            posted: new Date(job.created_at).toLocaleDateString(),
-            deadline: job.deadline,
-            description: job.description,
-            requiredSkills: job.required_skills ? JSON.parse(job.required_skills) : [],
-            preferredSkills: job.preferred_skills ? JSON.parse(job.preferred_skills) : [],
-            eligibility: job.eligibility_criteria ? JSON.parse(job.eligibility_criteria) : {},
-            applicationCount: job.application_count || 0,
-          }));
+        console.log('Fetching jobs from API...');
+        // Fetch all jobs (don't filter by status in query, filter after)
+        const jobsData = await jobsAPI.getAll();
+        console.log('Jobs API response:', jobsData);
+        
+        if (jobsData.success && jobsData.data) {
+          const formattedJobs = jobsData.data
+            .filter(job => job.status === 'active') // Filter for active jobs
+            .map(job => ({
+              id: job.id,
+              company: job.company_name,
+              logo: '🏢',
+              title: job.title,
+              location: job.location,
+              type: job.job_type,
+              package: job.package_min && job.package_max 
+                ? `${job.package_min}-${job.package_max} LPA` 
+                : 'Not specified',
+              posted: new Date(job.created_at).toLocaleDateString(),
+              deadline: job.deadline,
+              description: job.description,
+              requiredSkills: typeof job.required_skills === 'string' 
+                ? JSON.parse(job.required_skills) 
+                : (job.required_skills || []),
+              preferredSkills: typeof job.preferred_skills === 'string'
+                ? JSON.parse(job.preferred_skills)
+                : (job.preferred_skills || []),
+              eligibility: typeof job.eligibility_criteria === 'string'
+                ? JSON.parse(job.eligibility_criteria)
+                : (job.eligibility_criteria || {}),
+              applicationCount: job.application_count || 0,
+            }));
+          console.log('Formatted jobs:', formattedJobs);
           setJobs(formattedJobs);
+        } else {
+          console.error('Invalid jobs response:', jobsData);
         }
 
         // Fetch student's applications (student_id = 1 for demo)
         const applicationsData = await applicationsAPI.getAll({ student_id: 1 });
-        if (applicationsData.success) {
+        console.log('Applications API response:', applicationsData);
+        
+        if (applicationsData.success && applicationsData.data) {
           const applied = new Set(applicationsData.data.map(app => app.job_id));
+          console.log('Applied jobs:', applied);
           setAppliedJobs(applied);
         }
       } catch (error) {
         console.error('Error fetching jobs:', error);
+        alert('Failed to load jobs. Check console for details.');
       } finally {
         setLoading(false);
       }
@@ -292,25 +310,20 @@ const StudentJobs = () => {
             className={`filter-chip ${filter === 'applied' ? 'active' : ''}`}
             onClick={() => setFilter('applied')}
           >
-            Applied ({jobs.filter(j => j.applied).length})
+            Applied ({appliedJobs.size})
           </button>
         </div>
 
-        <div className="jobs-container">
-          {/* Jobs List */}
-          <div className="jobs-list">
-            {sortedJobs.length > 0 ? (
-              sortedJobs.map(job => {
-                const matchPercentage = calculateSkillMatch(job);
-                const matchedSkills = getMatchedSkills(job);
-                const missingSkills = getMissingSkills(job);
+        {/* Jobs Grid */}
+        <div className="jobs-grid">
+          {sortedJobs.length > 0 ? (
+            sortedJobs.map(job => {
+              const matchPercentage = calculateSkillMatch(job);
+              const matchedSkills = getMatchedSkills(job);
+              const missingSkills = getMissingSkills(job);
 
-                return (
-                  <div 
-                    key={job.id} 
-                    className={`job-card ${selectedJob?.id === job.id ? 'selected' : ''}`}
-                    onClick={() => setSelectedJob(job)}
-                  >
+              return (
+                <div key={job.id} className="job-card">
                     <div className="job-card-header">
                       <div className="job-company-info">
                         <span className="company-logo">{job.logo}</span>
@@ -369,6 +382,40 @@ const StudentJobs = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Job Description */}
+                    <div className="job-card-description">
+                      <p>{job.description}</p>
+                    </div>
+
+                    {/* Required Skills */}
+                    <div className="job-card-skills">
+                      <h4>Required Skills:</h4>
+                      <div className="skills-tags">
+                        {job.requiredSkills.slice(0, 5).map((skill, idx) => (
+                          <span 
+                            key={idx} 
+                            className={`skill-tag ${matchedSkills.includes(skill) ? 'matched' : 'missing'}`}
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                        {job.requiredSkills.length > 5 && (
+                          <span className="skill-tag">+{job.requiredSkills.length - 5} more</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Apply Button */}
+                    <div className="job-card-footer">
+                      <button 
+                        className={`btn-apply ${appliedJobs.has(job.id) ? 'applied' : ''}`}
+                        onClick={() => !appliedJobs.has(job.id) && handleApply(job.id)}
+                        disabled={appliedJobs.has(job.id)}
+                      >
+                        {appliedJobs.has(job.id) ? 'Applied ✓' : 'Apply Now'}
+                      </button>
+                    </div>
                   </div>
                 );
               })
@@ -377,115 +424,6 @@ const StudentJobs = () => {
                 <p>No jobs found matching your criteria</p>
               </div>
             )}
-          </div>
-
-          {/* Job Details Panel */}
-          {selectedJob && (
-            <div className="job-details-panel">
-              <div className="job-details-header">
-                <div className="job-title-section">
-                  <span className="company-logo-large">{selectedJob.logo}</span>
-                  <div>
-                    <h2>{selectedJob.title}</h2>
-                    <p className="company-name-large">{selectedJob.company}</p>
-                    <div className="job-meta">
-                      <span>📍 {selectedJob.location}</span>
-                      <span>💰 {selectedJob.package}</span>
-                      <span>👥 {selectedJob.experience}</span>
-                      <span>🕐 {selectedJob.posted}</span>
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  className={`btn-apply ${appliedJobs.has(selectedJob.id) ? 'applied' : ''}`}
-                  onClick={() => !appliedJobs.has(selectedJob.id) && handleApply(selectedJob.id)}
-                  disabled={appliedJobs.has(selectedJob.id)}
-                >
-                  {appliedJobs.has(selectedJob.id) ? 'Applied ✓' : 'Apply Now'}
-                </button>
-              </div>
-
-              {/* Skill Match Analysis */}
-              <div className="match-analysis">
-                <h3>Skill Match Analysis</h3>
-                <div className="match-percentage-large" style={{ color: getMatchColor(calculateSkillMatch(selectedJob)) }}>
-                  {calculateSkillMatch(selectedJob)}% {getMatchLabel(calculateSkillMatch(selectedJob))}
-                </div>
-
-                <div className="skills-breakdown">
-                  <div className="skills-section">
-                    <h4>✓ Skills You Have ({getMatchedSkills(selectedJob).length})</h4>
-                    <div className="skills-tags">
-                      {getMatchedSkills(selectedJob).map((skill, index) => (
-                        <span key={index} className="skill-tag matched">{skill}</span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {getMissingSkills(selectedJob).length > 0 && (
-                    <div className="skills-section">
-                      <h4>⚠️ Skills You Need ({getMissingSkills(selectedJob).length})</h4>
-                      <div className="skills-tags">
-                        {getMissingSkills(selectedJob).map((skill, index) => (
-                          <span key={index} className="skill-tag missing">{skill}</span>
-                        ))}
-                      </div>
-                      <div className="recommendation-box">
-                        <strong>💡 Recommendation:</strong> Consider taking courses in these areas to improve your match score.
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="job-description">
-                <h3>About the Role</h3>
-                <p>{selectedJob.description}</p>
-              </div>
-
-              <div className="job-responsibilities">
-                <h3>Key Responsibilities</h3>
-                <ul>
-                  {selectedJob.responsibilities.map((resp, index) => (
-                    <li key={index}>{resp}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="job-eligibility">
-                <h3>Eligibility Criteria</h3>
-                <div className="eligibility-grid">
-                  <div className="eligibility-item">
-                    <span className="eligibility-label">Minimum CGPA</span>
-                    <span className="eligibility-value">{selectedJob.eligibility.minCGPA}</span>
-                  </div>
-                  <div className="eligibility-item">
-                    <span className="eligibility-label">Eligible Branches</span>
-                    <span className="eligibility-value">{selectedJob.eligibility.branches.join(', ')}</span>
-                  </div>
-                  <div className="eligibility-item">
-                    <span className="eligibility-label">Graduation Year</span>
-                    <span className="eligibility-value">{selectedJob.eligibility.graduationYear}</span>
-                  </div>
-                  <div className="eligibility-item">
-                    <span className="eligibility-label">Backlogs</span>
-                    <span className="eligibility-value">{selectedJob.eligibility.backlogs}</span>
-                  </div>
-                </div>
-              </div>
-
-              {selectedJob.preferredSkills.length > 0 && (
-                <div className="preferred-skills">
-                  <h3>Preferred Skills (Bonus)</h3>
-                  <div className="skills-tags">
-                    {selectedJob.preferredSkills.map((skill, index) => (
-                      <span key={index} className="skill-tag preferred">{skill}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </Layout>

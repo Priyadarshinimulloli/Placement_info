@@ -5,7 +5,7 @@ const db = require('../config/database');
 // Get all jobs
 router.get('/', async (req, res) => {
   try {
-    const { company_id, type, location } = req.query;
+    const { company_id, type, location, status } = req.query;
     let query = `
       SELECT 
         j.*,
@@ -31,6 +31,10 @@ router.get('/', async (req, res) => {
     if (location) {
       conditions.push('j.location LIKE ?');
       params.push(`%${location}%`);
+    }
+    if (status) {
+      conditions.push('j.status = ?');
+      params.push(status);
     }
 
     if (conditions.length > 0) {

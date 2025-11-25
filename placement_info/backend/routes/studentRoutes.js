@@ -169,6 +169,45 @@ router.post('/:id/certifications', async (req, res) => {
   }
 });
 
+// Delete certification
+router.delete('/:id/certifications/:certId', async (req, res) => {
+  try {
+    const [result] = await db.query(
+      'DELETE FROM certifications WHERE id = ? AND student_id = ?',
+      [req.params.certId, req.params.id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Certification not found' });
+    }
+
+    res.json({ success: true, message: 'Certification deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update certification
+router.put('/:id/certifications/:certId', async (req, res) => {
+  try {
+    const { name, issuer, date_obtained, expiry_date, credential_id } = req.body;
+    
+    const [result] = await db.query(
+      `UPDATE certifications SET name = ?, issuer = ?, date_obtained = ?, expiry_date = ?, credential_id = ? 
+       WHERE id = ? AND student_id = ?`,
+      [name, issuer, date_obtained, expiry_date, credential_id, req.params.certId, req.params.id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Certification not found' });
+    }
+
+    res.json({ success: true, message: 'Certification updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Add internship
 router.post('/:id/internships', async (req, res) => {
   try {
@@ -185,6 +224,45 @@ router.post('/:id/internships', async (req, res) => {
       message: 'Internship added successfully',
       data: { id: result.insertId }
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete internship
+router.delete('/:id/internships/:internshipId', async (req, res) => {
+  try {
+    const [result] = await db.query(
+      'DELETE FROM internships WHERE id = ? AND student_id = ?',
+      [req.params.internshipId, req.params.id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Internship not found' });
+    }
+
+    res.json({ success: true, message: 'Internship deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update internship
+router.put('/:id/internships/:internshipId', async (req, res) => {
+  try {
+    const { company, role, start_date, end_date, description, skills, is_current } = req.body;
+    
+    const [result] = await db.query(
+      `UPDATE internships SET company = ?, role = ?, start_date = ?, end_date = ?, description = ?, skills = ?, is_current = ? 
+       WHERE id = ? AND student_id = ?`,
+      [company, role, start_date, end_date, description, JSON.stringify(skills), is_current, req.params.internshipId, req.params.id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Internship not found' });
+    }
+
+    res.json({ success: true, message: 'Internship updated successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

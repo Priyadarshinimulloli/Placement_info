@@ -50,8 +50,22 @@ export const studentsAPI = {
     method: 'POST',
     body: JSON.stringify(certData),
   }),
+  deleteCertification: (id, certId) => fetchAPI(`/students/${id}/certifications/${certId}`, {
+    method: 'DELETE',
+  }),
+  updateCertification: (id, certId, certData) => fetchAPI(`/students/${id}/certifications/${certId}`, {
+    method: 'PUT',
+    body: JSON.stringify(certData),
+  }),
   addInternship: (id, internshipData) => fetchAPI(`/students/${id}/internships`, {
     method: 'POST',
+    body: JSON.stringify(internshipData),
+  }),
+  deleteInternship: (id, internshipId) => fetchAPI(`/students/${id}/internships/${internshipId}`, {
+    method: 'DELETE',
+  }),
+  updateInternship: (id, internshipId, internshipData) => fetchAPI(`/students/${id}/internships/${internshipId}`, {
+    method: 'PUT',
     body: JSON.stringify(internshipData),
   }),
 };
