@@ -134,6 +134,7 @@ export const analyticsAPI = {
   getSkills: () => fetchAPI('/analytics/skills'),
   getCompanies: () => fetchAPI('/analytics/companies'),
   getApplicationStatus: () => fetchAPI('/analytics/applications/status'),
+  getPackageDistribution: () => fetchAPI('/analytics/package-distribution'),
 };
 
 // Health check

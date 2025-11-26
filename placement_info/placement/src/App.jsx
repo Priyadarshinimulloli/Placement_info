@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
+import Landing from './pages/Landing'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
@@ -12,19 +13,31 @@ import CompanyDetail from './pages/student/CompanyDetail'
 import Notifications from './pages/student/Notifications'
 import Settings from './pages/student/Settings'
 import Analytics from './pages/student/Analytics'
+import CollegeLogin from './pages/college/CollegeLogin'
+import CollegeDashboard from './pages/college/CollegeDashboard'
+import CompanyLogin from './pages/company/CompanyLogin'
+import CompanyDashboard from './pages/company/CompanyDashboard'
 import './App.css'
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Landing Page */}
+        <Route path="/" element={<Landing />} />
+        
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         
-        {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* College Routes */}
+        <Route path="/college/login" element={<CollegeLogin />} />
+        <Route path="/college/dashboard" element={<CollegeDashboard />} />
+        
+        {/* Company Routes */}
+        <Route path="/company/login" element={<CompanyLogin />} />
+        <Route path="/company/dashboard" element={<CompanyDashboard />} />
         
         {/* Student Portal Routes */}
         <Route path="/student/dashboard" element={<StudentDashboard />} />

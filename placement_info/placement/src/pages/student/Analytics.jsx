@@ -8,97 +8,26 @@ const Analytics = () => {
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState({
     overview: {
-      totalStudents: 450,
-      placed: 287,
-      inProcess: 98,
-      notPlaced: 65,
-      placementRate: 63.8,
-      averagePackage: 12.5,
-      highestPackage: 45,
+      totalStudents: 0,
+      placed: 0,
+      inProcess: 0,
+      notPlaced: 0,
+      placementRate: 0,
+      averagePackage: 0,
+      highestPackage: 0,
     },
-    departmentStats: [
-      { department: 'Computer Science', total: 120, placed: 95, rate: 79.2, avgPackage: 14.2 },
-      { department: 'Information Technology', total: 100, placed: 78, rate: 78.0, avgPackage: 13.5 },
-      { department: 'Electronics & Communication', total: 90, placed: 62, rate: 68.9, avgPackage: 11.8 },
-      { department: 'Mechanical Engineering', total: 80, placed: 35, rate: 43.8, avgPackage: 9.2 },
-      { department: 'Civil Engineering', total: 60, placed: 17, rate: 28.3, avgPackage: 7.5 },
-    ],
-    topSkills: [
-      { skill: 'JavaScript', demandCount: 42, students: 180, gap: -138 },
-      { skill: 'Python', demandCount: 38, students: 165, gap: -127 },
-      { skill: 'Java', demandCount: 35, students: 140, gap: -105 },
-      { skill: 'React', demandCount: 32, students: 120, gap: -88 },
-      { skill: 'Node.js', demandCount: 28, students: 95, gap: -67 },
-      { skill: 'SQL', demandCount: 30, students: 110, gap: -80 },
-      { skill: 'AWS', demandCount: 25, students: 45, gap: 20 },
-      { skill: 'Docker', demandCount: 22, students: 38, gap: 16 },
-      { skill: 'Kubernetes', demandCount: 18, students: 25, gap: 7 },
-      { skill: 'Machine Learning', demandCount: 20, students: 55, gap: -35 },
-    ],
+    departmentStats: [],
+    topSkills: [],
     packageDistribution: [
-      { range: '0-5 LPA', count: 25 },
-      { range: '5-10 LPA', count: 95 },
-      { range: '10-15 LPA', count: 120 },
-      { range: '15-20 LPA', count: 35 },
-      { range: '20+ LPA', count: 12 },
+      { range: '0-5 LPA', count: 0 },
+      { range: '5-10 LPA', count: 0 },
+      { range: '10-15 LPA', count: 0 },
+      { range: '15-20 LPA', count: 0 },
+      { range: '20+ LPA', count: 0 },
     ],
-    topCompanies: [
-      { name: 'Tech Corp', hires: 35, avgPackage: 14.5 },
-      { name: 'Innovation Labs', hires: 28, avgPackage: 13.2 },
-      { name: 'Data Analytics Inc', hires: 25, avgPackage: 12.8 },
-      { name: 'Cloud Systems', hires: 22, avgPackage: 15.6 },
-      { name: 'AI Solutions', hires: 20, avgPackage: 16.5 },
-    ],
-    skillGapInsights: [
-      {
-        skill: 'AWS',
-        demand: 25,
-        supply: 45,
-        status: 'surplus',
-        message: 'Good coverage! Students have strong AWS skills.'
-      },
-      {
-        skill: 'Docker',
-        demand: 22,
-        supply: 38,
-        status: 'surplus',
-        message: 'Docker skills are well represented.'
-      },
-      {
-        skill: 'JavaScript',
-        demand: 42,
-        supply: 180,
-        status: 'shortage',
-        message: 'High demand! Consider advanced JavaScript training.'
-      },
-      {
-        skill: 'Python',
-        demand: 38,
-        supply: 165,
-        status: 'shortage',
-        message: 'Python demand is high. Focus on frameworks.'
-      },
-    ],
-    trainingRecommendations: [
-      {
-        category: 'High Priority',
-        skills: ['AWS Cloud Practitioner', 'Docker & Kubernetes', 'System Design'],
-        reason: 'High market demand with skill gap',
-        students: 150,
-      },
-      {
-        category: 'Medium Priority',
-        skills: ['React Advanced', 'Node.js Microservices', 'MongoDB'],
-        reason: 'Growing demand in placement drives',
-        students: 200,
-      },
-      {
-        category: 'Emerging Technologies',
-        skills: ['Machine Learning', 'DevOps', 'Blockchain'],
-        reason: 'Future-ready skills for premium roles',
-        students: 100,
-      },
-    ],
+    topCompanies: [],
+    skillGapInsights: [],
+    trainingRecommendations: [],
   });
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -112,15 +41,21 @@ const Analytics = () => {
       setLoading(true);
       
       // Fetch all analytics data in parallel
-      const [stats, departments, skills, companies, applicationStatus] = await Promise.all([
+      const [stats, departments, skills, companies, applicationStatus, packageDist] = await Promise.all([
         analyticsAPI.getStats(),
         analyticsAPI.getDepartments(),
         analyticsAPI.getSkills(),
         analyticsAPI.getCompanies(),
-        analyticsAPI.getApplicationStatus()
+        analyticsAPI.getApplicationStatus(),
+        analyticsAPI.getPackageDistribution()
       ]);
 
-      console.log('Analytics Data:', { stats, departments, skills, companies, applicationStatus });
+      console.log('Analytics Data:', { stats, departments, skills, companies, applicationStatus, packageDist });
+
+      // Calculate highest package from jobs
+      const highestPkg = companies.reduce((max, company) => 
+        Math.max(max, company.avg_package || 0), 0
+      );
 
       // Transform the data to match the component's expected structure
       const transformedData = {
@@ -129,65 +64,60 @@ const Analytics = () => {
           placed: stats.placedStudents || 0,
           inProcess: stats.totalApplications - (stats.placedStudents || 0),
           notPlaced: stats.totalStudents - (stats.placedStudents || 0),
-          placementRate: stats.totalStudents > 0 ? ((stats.placedStudents / stats.totalStudents) * 100).toFixed(1) : 0,
-          averagePackage: stats.averagePackage || 0,
-          highestPackage: stats.highestPackage || 0,
+          placementRate: stats.placementRate || 0,
+          averagePackage: parseFloat(stats.averagePackage || 0).toFixed(1),
+          highestPackage: parseFloat(highestPkg).toFixed(1),
         },
         departmentStats: departments.map(dept => ({
           department: dept.department,
           total: dept.total_students,
           placed: dept.placed_students,
-          rate: dept.placement_rate,
-          avgPackage: dept.average_package || 0
+          rate: parseFloat(dept.placement_rate || 0).toFixed(1),
+          avgPackage: parseFloat(dept.average_cgpa || 0).toFixed(1)
         })),
         topSkills: skills.map(skill => ({
           skill: skill.skill_name,
-          demandCount: skill.job_demand || 0,
-          students: skill.student_count || 0,
-          gap: (skill.student_count || 0) - (skill.job_demand || 0)
+          demandCount: skill.demand_count || 0,
+          students: skill.demand_count || 0,
+          gap: 0
         })),
-        packageDistribution: [
+        packageDistribution: packageDist || [
           { range: '0-5 LPA', count: 0 },
           { range: '5-10 LPA', count: 0 },
           { range: '10-15 LPA', count: 0 },
           { range: '15-20 LPA', count: 0 },
           { range: '20+ LPA', count: 0 },
         ],
-        topCompanies: companies.slice(0, 5).map((company, index) => ({
-          name: company.company_name,
-          hires: company.total_hires || 0,
-          avgPackage: company.average_package || 0
+        topCompanies: companies.slice(0, 5).map(company => ({
+          name: company.name,
+          hires: company.placements || 0,
+          avgPackage: parseFloat(company.avg_package || 0).toFixed(1)
         })),
-        skillGapInsights: skills.slice(0, 4).map(skill => {
-          const gap = (skill.student_count || 0) - (skill.job_demand || 0);
-          return {
-            skill: skill.skill_name,
-            demand: skill.job_demand || 0,
-            supply: skill.student_count || 0,
-            status: gap > 0 ? 'surplus' : 'shortage',
-            message: gap > 0 
-              ? `Good coverage! Students have strong ${skill.skill_name} skills.`
-              : `High demand! Consider ${skill.skill_name} training.`
-          };
-        }),
+        skillGapInsights: skills.slice(0, 4).map(skill => ({
+          skill: skill.skill_name,
+          demand: skill.demand_count || 0,
+          supply: skill.demand_count || 0,
+          status: 'surplus',
+          message: `${skill.demand_count || 0} students have ${skill.skill_name} skills.`
+        })),
         trainingRecommendations: [
           {
             category: 'High Priority',
-            skills: skills.filter(s => (s.student_count || 0) < (s.job_demand || 0)).slice(0, 3).map(s => s.skill_name),
-            reason: 'High market demand with skill gap',
-            students: 150,
+            skills: skills.slice(0, 3).map(s => s.skill_name),
+            reason: 'Most popular skills among students',
+            students: skills.slice(0, 3).reduce((sum, s) => sum + (s.demand_count || 0), 0),
           },
           {
             category: 'Medium Priority',
             skills: skills.slice(3, 6).map(s => s.skill_name),
-            reason: 'Growing demand in placement drives',
-            students: 200,
+            reason: 'Growing skills in student base',
+            students: skills.slice(3, 6).reduce((sum, s) => sum + (s.demand_count || 0), 0),
           },
           {
             category: 'Emerging Technologies',
-            skills: ['Machine Learning', 'DevOps', 'Blockchain'],
+            skills: skills.filter(s => ['Machine Learning', 'Deep Learning', 'DevOps', 'Blockchain', 'AI', 'Cloud'].includes(s.skill_name)).map(s => s.skill_name).slice(0, 3),
             reason: 'Future-ready skills for premium roles',
-            students: 100,
+            students: skills.filter(s => ['Machine Learning', 'Deep Learning', 'DevOps', 'Blockchain', 'AI', 'Cloud'].includes(s.skill_name)).reduce((sum, s) => sum + (s.demand_count || 0), 0),
           },
         ],
       };
