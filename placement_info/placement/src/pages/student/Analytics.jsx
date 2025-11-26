@@ -52,48 +52,55 @@ const Analytics = () => {
 
       console.log('Analytics Data:', { stats, departments, skills, companies, applicationStatus, packageDist });
 
+      // Extract data from response (API returns {success: true, data: {...}})
+      const statsData = stats.data || stats;
+      const deptsData = departments.data || departments;
+      const skillsData = skills.data || skills;
+      const companiesData = companies.data || companies;
+      const packageData = packageDist.data || packageDist;
+
       // Calculate highest package from jobs
-      const highestPkg = companies.reduce((max, company) => 
+      const highestPkg = companiesData.reduce((max, company) => 
         Math.max(max, company.avg_package || 0), 0
       );
 
       // Transform the data to match the component's expected structure
       const transformedData = {
         overview: {
-          totalStudents: stats.totalStudents || 0,
-          placed: stats.placedStudents || 0,
-          inProcess: stats.totalApplications - (stats.placedStudents || 0),
-          notPlaced: stats.totalStudents - (stats.placedStudents || 0),
-          placementRate: stats.placementRate || 0,
-          averagePackage: parseFloat(stats.averagePackage || 0).toFixed(1),
+          totalStudents: statsData.totalStudents || 0,
+          placed: statsData.placedStudents || 0,
+          inProcess: statsData.totalApplications - (statsData.placedStudents || 0),
+          notPlaced: statsData.totalStudents - (statsData.placedStudents || 0),
+          placementRate: statsData.placementRate || 0,
+          averagePackage: parseFloat(statsData.averagePackage || 0).toFixed(1),
           highestPackage: parseFloat(highestPkg).toFixed(1),
         },
-        departmentStats: departments.map(dept => ({
+        departmentStats: deptsData.map(dept => ({
           department: dept.department,
           total: dept.total_students,
           placed: dept.placed_students,
           rate: parseFloat(dept.placement_rate || 0).toFixed(1),
           avgPackage: parseFloat(dept.average_cgpa || 0).toFixed(1)
         })),
-        topSkills: skills.map(skill => ({
+        topSkills: skillsData.map(skill => ({
           skill: skill.skill_name,
           demandCount: skill.demand_count || 0,
           students: skill.demand_count || 0,
           gap: 0
         })),
-        packageDistribution: packageDist || [
+        packageDistribution: packageData || [
           { range: '0-5 LPA', count: 0 },
           { range: '5-10 LPA', count: 0 },
           { range: '10-15 LPA', count: 0 },
           { range: '15-20 LPA', count: 0 },
           { range: '20+ LPA', count: 0 },
         ],
-        topCompanies: companies.slice(0, 5).map(company => ({
+        topCompanies: companiesData.slice(0, 5).map(company => ({
           name: company.name,
           hires: company.placements || 0,
           avgPackage: parseFloat(company.avg_package || 0).toFixed(1)
         })),
-        skillGapInsights: skills.slice(0, 4).map(skill => ({
+        skillGapInsights: skillsData.slice(0, 4).map(skill => ({
           skill: skill.skill_name,
           demand: skill.demand_count || 0,
           supply: skill.demand_count || 0,
@@ -103,21 +110,21 @@ const Analytics = () => {
         trainingRecommendations: [
           {
             category: 'High Priority',
-            skills: skills.slice(0, 3).map(s => s.skill_name),
+            skills: skillsData.slice(0, 3).map(s => s.skill_name),
             reason: 'Most popular skills among students',
-            students: skills.slice(0, 3).reduce((sum, s) => sum + (s.demand_count || 0), 0),
+            students: skillsData.slice(0, 3).reduce((sum, s) => sum + (s.demand_count || 0), 0),
           },
           {
             category: 'Medium Priority',
-            skills: skills.slice(3, 6).map(s => s.skill_name),
+            skills: skillsData.slice(3, 6).map(s => s.skill_name),
             reason: 'Growing skills in student base',
-            students: skills.slice(3, 6).reduce((sum, s) => sum + (s.demand_count || 0), 0),
+            students: skillsData.slice(3, 6).reduce((sum, s) => sum + (s.demand_count || 0), 0),
           },
           {
             category: 'Emerging Technologies',
-            skills: skills.filter(s => ['Machine Learning', 'Deep Learning', 'DevOps', 'Blockchain', 'AI', 'Cloud'].includes(s.skill_name)).map(s => s.skill_name).slice(0, 3),
+            skills: skillsData.filter(s => ['Machine Learning', 'Deep Learning', 'DevOps', 'Blockchain', 'AI', 'Cloud'].includes(s.skill_name)).map(s => s.skill_name).slice(0, 3),
             reason: 'Future-ready skills for premium roles',
-            students: skills.filter(s => ['Machine Learning', 'Deep Learning', 'DevOps', 'Blockchain', 'AI', 'Cloud'].includes(s.skill_name)).reduce((sum, s) => sum + (s.demand_count || 0), 0),
+            students: skillsData.filter(s => ['Machine Learning', 'Deep Learning', 'DevOps', 'Blockchain', 'AI', 'Cloud'].includes(s.skill_name)).reduce((sum, s) => sum + (s.demand_count || 0), 0),
           },
         ],
       };
