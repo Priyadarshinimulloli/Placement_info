@@ -127,4 +127,47 @@ router.get('/applications/status', async (req, res) => {
   }
 });
 
+// Get package distribution
+router.get('/package-distribution', async (req, res) => {
+  try {
+    const [packageData] = await db.query(`
+      SELECT 
+        CASE 
+          WHEN (j.package_min + j.package_max) / 2 < 5 THEN '0-5 LPA'
+          WHEN (j.package_min + j.package_max) / 2 < 10 THEN '5-10 LPA'
+          WHEN (j.package_min + j.package_max) / 2 < 15 THEN '10-15 LPA'
+          WHEN (j.package_min + j.package_max) / 2 < 20 THEN '15-20 LPA'
+          ELSE '20+ LPA'
+        END as package_range,
+        COUNT(DISTINCT a.student_id) as count
+      FROM applications a
+      JOIN jobs j ON a.job_id = j.id
+      WHERE a.status = 'selected'
+      GROUP BY package_range
+      ORDER BY 
+        CASE 
+          WHEN package_range = '0-5 LPA' THEN 1
+          WHEN package_range = '5-10 LPA' THEN 2
+          WHEN package_range = '10-15 LPA' THEN 3
+          WHEN package_range = '15-20 LPA' THEN 4
+          ELSE 5
+        END
+    `);
+
+    // Ensure all ranges are present
+    const ranges = ['0-5 LPA', '5-10 LPA', '10-15 LPA', '15-20 LPA', '20+ LPA'];
+    const distribution = ranges.map(range => {
+      const found = packageData.find(p => p.package_range === range);
+      return {
+        range,
+        count: found ? found.count : 0
+      };
+    });
+
+    res.json({ success: true, data: distribution });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
