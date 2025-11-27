@@ -8,13 +8,13 @@ import './StudentDashboard.css';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
-  const [studentData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@university.edu',
-    rollNumber: 'CS2021-001',
-    department: 'Computer Science',
-    year: '4th Year',
-    cgpa: '8.5',
+  const [studentData, setStudentData] = useState({
+    name: '',
+    email: '',
+    rollNumber: '',
+    department: '',
+    year: '',
+    cgpa: '',
   });
 
   const [stats, setStats] = useState([
@@ -56,6 +56,24 @@ const StudentDashboard = () => {
 
   const [recentApplications, setRecentApplications] = useState([]);
   const [upcomingInterviews, setUpcomingInterviews] = useState([]);
+
+  // Get logged-in user data
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.id) {
+      setStudentData({
+        name: user.fullName || user.full_name || '',
+        email: user.email || '',
+        rollNumber: user.rollNumber || user.roll_number || '',
+        department: user.department || '',
+        year: user.year || '',
+        cgpa: user.cgpa || '',
+      });
+    } else {
+      // If no user logged in, redirect to login
+      navigate('/login');
+    }
+  }, [navigate]);
 
   // Fetch dashboard data
   useEffect(() => {

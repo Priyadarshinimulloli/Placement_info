@@ -9,7 +9,7 @@ const StudentProfile = () => {
   const [editMode, setEditMode] = useState({});
   const [employabilityIndex, setEmployabilityIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [studentId] = useState(1); // TODO: Get from auth context
+  const [studentId, setStudentId] = useState(null);
 
   const [profileData, setProfileData] = useState({
     personal: {
@@ -36,9 +36,22 @@ const StudentProfile = () => {
     company: '', role: '', startDate: '', endDate: '', description: '', skills: '', current: false
   });
 
+  // Get student ID from logged-in user
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.id) {
+      setStudentId(user.id);
+    } else {
+      // If no user logged in, redirect to login
+      window.location.href = '/login';
+    }
+  }, []);
+
   // Calculate Employability Index
   useEffect(() => {
-    fetchProfileData();
+    if (studentId) {
+      fetchProfileData();
+    }
   }, [studentId]);
 
   useEffect(() => {

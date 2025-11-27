@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './Sidebar.css';
 
 const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    setUser(userData);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
 
   const menuItems = [
     {
@@ -90,10 +103,19 @@ const Sidebar = () => {
       </nav>
 
       <div className="sidebar-footer">
-        <Link to="/logout" className="nav-item logout">
+        {user && !isCollapsed && (
+          <div className="user-info">
+            <div className="user-avatar">{user.fullName?.charAt(0) || user.email?.charAt(0) || '?'}</div>
+            <div className="user-details">
+              <div className="user-name">{user.fullName || user.email}</div>
+              <div className="user-email">{user.email}</div>
+            </div>
+          </div>
+        )}
+        <button onClick={handleLogout} className="nav-item logout" style={{width: '100%', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left'}}>
           <span className="nav-icon">🚪</span>
           {!isCollapsed && <span className="nav-label">Logout</span>}
-        </Link>
+        </button>
       </div>
     </aside>
   );
