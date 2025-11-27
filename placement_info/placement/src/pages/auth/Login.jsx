@@ -10,6 +10,7 @@ const Login = () => {
     rememberMe: false,
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -19,19 +20,49 @@ const Login = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     
     // Validation
     if (!formData.email || !formData.password) {
       setError('Please fill in all fields');
+      setLoading(false);
       return;
     }
 
-    // TODO: Implement actual authentication
-    console.log('Login:', formData);
-    navigate('/student/dashboard');
+    try {
+      // Call backend API
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store token and user data
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('user', JSON.stringify(data.data.user));
+        
+        // Navigate to dashboard
+        navigate('/student/dashboard');
+      } else {
+        setError(data.message || 'Login failed');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Unable to connect to server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -91,8 +122,8 @@ const Login = () => {
             </Link>
           </div>
 
-          <button type="submit" className="btn-submit">
-            Sign In
+          <button type="submit" className="btn-submit" disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 

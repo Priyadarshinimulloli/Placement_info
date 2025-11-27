@@ -24,7 +24,19 @@ USE place;
 2. Execute the entire file in MySQL Workbench
    - This adds 11 students, 11 companies, 18 jobs, and multiple applications
 
-**Important**: Run `schema.sql` BEFORE `additional_data.sql`
+### Step 4: Setup Authentication (REQUIRED)
+Run this SQL query to add password support:
+```sql
+ALTER TABLE students 
+ADD COLUMN password_hash VARCHAR(255) NULL AFTER email;
+```
+
+**OR** run the setup file:
+```bash
+mysql -u root -p place < backend/database/setup_auth.sql
+```
+
+**Important**: Run `schema.sql` BEFORE `additional_data.sql` BEFORE `setup_auth.sql`
 
 ## Backend Setup
 
@@ -187,9 +199,30 @@ placement_info/
 ```
 
 ## Default Login (When Auth is Implemented)
-Currently, the app uses hardcoded student ID = 1 for profile/dashboard.
+**Create your first account:**
+- Go to: `http://localhost:5174/register`
+- Fill in signup form
+- Login with your credentials
+
+**OR** create via API:
+```bash
+curl -X POST http://localhost:5000/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@student.com","password":"test123","fullName":"Test User","department":"CS"}'
+```
+
+**Test Account (if exists):**
+- Email: `demo@test.com`
+- Password: `demo123`
 
 ## API Endpoints
+
+### Authentication
+- POST `/api/auth/signup` - Create new account (email, password, fullName required)
+- POST `/api/auth/login` - Login and get JWT token
+- GET `/api/auth/verify` - Verify JWT token validity
+
+### Students & Data
 - GET `/api/students` - Get all students
 - GET `/api/companies` - Get all companies
 - GET `/api/jobs` - Get all jobs

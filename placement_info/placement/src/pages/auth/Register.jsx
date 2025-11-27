@@ -14,6 +14,7 @@ const Register = () => {
     confirmPassword: '',
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,29 +24,64 @@ const Register = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     
     // Validation
     if (Object.values(formData).some(val => !val)) {
       setError('Please fill in all fields');
+      setLoading(false);
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      setLoading(false);
       return;
     }
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
+      setLoading(false);
       return;
     }
 
-    // TODO: Implement actual registration
-    console.log('Register:', formData);
-    navigate('/login');
+    try {
+      // Call backend API
+      const response = await fetch('http://localhost:5000/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          fullName: formData.fullName,
+          rollNumber: formData.rollNumber,
+          department: formData.department,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store token and user data
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('user', JSON.stringify(data.data.user));
+        
+        // Navigate to dashboard
+        navigate('/student/dashboard');
+      } else {
+        setError(data.message || 'Registration failed');
+      }
+    } catch (err) {
+      console.error('Registration error:', err);
+      setError('Unable to connect to server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -169,8 +205,8 @@ const Register = () => {
             />
           </div>
 
-          <button type="submit" className="btn-submit">
-            Create Account
+          <button type="submit" className="btn-submit" disabled={loading}>
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
