@@ -15,8 +15,12 @@ import Settings from './pages/student/Settings'
 import Analytics from './pages/student/Analytics'
 import CollegeLogin from './pages/college/CollegeLogin'
 import CollegeDashboard from './pages/college/CollegeDashboard'
+import AddStudent from './pages/college/AddStudent'
+import AddCompany from './pages/college/AddCompany'
+import AddDrive from './pages/college/AddDrive'
 import CompanyLogin from './pages/company/CompanyLogin'
 import CompanyDashboard from './pages/company/CompanyDashboard'
+import AddJob from './pages/company/AddJob'
 import './App.css'
 
 function App() {
@@ -34,10 +38,14 @@ function App() {
         {/* College Routes */}
         <Route path="/college/login" element={<CollegeLogin />} />
         <Route path="/college/dashboard" element={<CollegeDashboard />} />
+        <Route path="/college/add-student" element={<AddStudent />} />
+        <Route path="/college/add-company" element={<AddCompany />} />
+        <Route path="/college/add-drive" element={<AddDrive />} />
         
         {/* Company Routes */}
         <Route path="/company/login" element={<CompanyLogin />} />
         <Route path="/company/dashboard" element={<CompanyDashboard />} />
+        <Route path="/company/add-job" element={<AddJob />} />
         
         {/* Student Portal Routes */}
         <Route path="/student/dashboard" element={<StudentDashboard />} />

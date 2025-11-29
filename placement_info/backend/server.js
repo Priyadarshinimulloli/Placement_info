@@ -12,6 +12,7 @@ const companyRoutes = require('./routes/companyRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const collegeDashboardRoutes = require('./routes/collegeDashboardRoutes');
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use('/api/companies', companyRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/college', collegeDashboardRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

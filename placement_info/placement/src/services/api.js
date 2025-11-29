@@ -137,6 +137,20 @@ export const analyticsAPI = {
   getPackageDistribution: () => fetchAPI('/analytics/package-distribution'),
 };
 
+// College Dashboard API
+export const collegeDashboardAPI = {
+  getStats: () => fetchAPI('/college/stats'),
+  getRecentStudents: (limit) => fetchAPI(`/college/students/recent${limit ? `?limit=${limit}` : ''}`),
+  getActiveCompanies: () => fetchAPI('/college/companies/active'),
+  getUpcomingDrives: () => fetchAPI('/college/drives/upcoming'),
+  getBranchWiseStats: () => fetchAPI('/college/placements/branch-wise'),
+  getRecentApplications: (limit) => fetchAPI(`/college/applications/recent${limit ? `?limit=${limit}` : ''}`),
+  getTopStudents: () => fetchAPI('/college/students/top'),
+  getCompanyHiringStats: () => fetchAPI('/college/companies/hiring-stats'),
+  getPlacementTrends: () => fetchAPI('/college/placements/trends'),
+  getApplicationStatusBreakdown: () => fetchAPI('/college/applications/status-breakdown'),
+};
+
 // Health check
 export const healthCheck = () => fetchAPI('/health');
 
@@ -146,5 +160,6 @@ export default {
   jobs: jobsAPI,
   applications: applicationsAPI,
   analytics: analyticsAPI,
+  collegeDashboard: collegeDashboardAPI,
   healthCheck,
 };

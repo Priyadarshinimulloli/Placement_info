@@ -119,9 +119,29 @@ router.put('/:id', async (req, res) => {
   try {
     const { status, notes } = req.body;
     
+    // Build dynamic query based on provided fields
+    const updates = [];
+    const values = [];
+    
+    if (status !== undefined) {
+      updates.push('status = ?');
+      values.push(status);
+    }
+    
+    if (notes !== undefined) {
+      updates.push('notes = ?');
+      values.push(notes);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+    
+    values.push(req.params.id);
+    
     const [result] = await db.query(
-      `UPDATE applications SET status = ?, notes = ? WHERE id = ?`,
-      [status, notes, req.params.id]
+      `UPDATE applications SET ${updates.join(', ')} WHERE id = ?`,
+      values
     );
 
     if (result.affectedRows === 0) {
